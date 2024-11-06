@@ -120,6 +120,21 @@
             color: #333;
             margin-top: 10px;
         }
+
+        /* Floating button */
+        .floating-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1001;
+        }
     </style>
 </head>
 <body>
@@ -166,6 +181,9 @@
         <button onclick="saveNote()">Save</button>
         <button onclick="closeNoteDialog()">Cancel</button>
     </div>
+
+    <!-- Floating Button -->
+    <button class="floating-btn" onclick="goToCurrentMonth()">⏪</button>
 
     <script>
         const today = new Date();
@@ -224,7 +242,7 @@
 
                     const monthDiv = document.createElement('div');
                     monthDiv.classList.add('month');
-                    monthDiv.innerHTML = `<h2>${monthNames[month]} ${yearIndex}</h2>`;
+                    monthDiv.innerHTML = `<h2 id="month-${yearIndex}-${month}">${monthNames[month]} ${yearIndex}</h2>`;
 
                     const table = document.createElement('table');
                     const headerRow = document.createElement('tr');
@@ -235,7 +253,6 @@
                         th.innerText = day;
                         headerRow.appendChild(th);
                     });
-
                     table.appendChild(headerRow);
 
                     let row = document.createElement('tr');
@@ -277,6 +294,16 @@
                     monthDiv.appendChild(table);
                     calendarContainer.appendChild(monthDiv);
                 }
+            }
+        }
+
+        function goToCurrentMonth() {
+            const currentMonthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
+            if (currentMonthDiv) {
+                window.scrollTo({
+                    top: currentMonthDiv.offsetTop - 50,
+                    behavior: 'smooth'
+                });
             }
         }
 
