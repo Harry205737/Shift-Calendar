@@ -126,10 +126,10 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background-color: #007bff;
+            background-color: black;
             color: white;
             border: none;
-            padding: 10px 15px;
+            padding: 12px;
             border-radius: 50%;
             cursor: pointer;
             font-size: 18px;
@@ -183,7 +183,7 @@
     </div>
 
     <!-- Floating Button -->
-    <button class="floating-btn" onclick="goToCurrentMonth()">⏪</button>
+    <button class="floating-btn" onclick="goToCurrentMonth()">🔙</button>
 
     <script>
         const today = new Date();
@@ -307,43 +307,12 @@
             }
         }
 
-        // Show the calendar with the current year and next years
+        function toggleMenu() {
+            const menuContent = document.querySelector('.menu-content');
+            menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
+        }
+
         generateCalendar(currentYear);
-
-        function showNoteDialog(year, month, day) {
-            const noteDialog = document.getElementById('note-dialog');
-            document.getElementById('note-dialog-date').innerText = `${month + 1}/${day}/${year}`;
-            noteDialog.style.display = 'block';
-            selectedDate = { year, month, day };
-        }
-
-        function closeNoteDialog() {
-            document.getElementById('note-dialog').style.display = 'none';
-        }
-
-        function saveNote() {
-            const noteText = document.getElementById('note-text').value;
-            const shiftStart = document.getElementById('shift-start').value;
-            const shiftEnd = document.getElementById('shift-end').value;
-
-            if (noteText.trim() === '') return;
-
-            // Add note to the selected date
-            const noteIndicator = document.createElement('span');
-            noteIndicator.classList.add('note-indicator');
-            noteIndicator.innerText = 'N';
-
-            const selectedDay = document.querySelector(`td[data-year="${selectedDate.year}"][data-month="${selectedDate.month}"][data-day="${selectedDate.day}"]`);
-            if (selectedDay) {
-                selectedDay.appendChild(noteIndicator);
-                const shiftTime = document.createElement('span');
-                shiftTime.classList.add('shift-time');
-                shiftTime.innerText = `Shift: ${shiftStart} - ${shiftEnd}`;
-                selectedDay.appendChild(shiftTime);
-            }
-
-            closeNoteDialog();
-        }
     </script>
 
 </body>
