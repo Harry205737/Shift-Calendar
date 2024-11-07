@@ -15,8 +15,13 @@ async function loadCalendar() {
             },
         });
 
+        if (response.status === 404) {
+            console.warn('No existing calendar data file found in the repository.');
+            return; // No file exists, so there's nothing to load
+        }
+        
         if (!response.ok) {
-            throw new Error('Could not load calendar data');
+            throw new Error(`Error loading data: ${response.statusText}`);
         }
 
         const fileData = await response.json();
@@ -29,8 +34,10 @@ async function loadCalendar() {
 
         // Populate the calendar on the page
         generateCalendar(currentYear);
+        console.log('Calendar data loaded successfully.');
     } catch (error) {
         console.error('Failed to load calendar:', error);
+        alert('Failed to load calendar data from GitHub.');
     }
 }
 
@@ -55,6 +62,8 @@ async function saveCalendar() {
         if (getFileResponse.ok) {
             const fileData = await getFileResponse.json();
             sha = fileData.sha; // Get the current file SHA for updates
+        } else if (getFileResponse.status !== 404) {
+            throw new Error(`Error checking file existence: ${getFileResponse.statusText}`);
         }
 
         // Save the updated calendar data to GitHub
@@ -68,12 +77,12 @@ async function saveCalendar() {
                 message: 'Update calendar data',
                 content: btoa(JSON.stringify(calendarData)),
                 branch: branch,
-                sha: sha,
+                sha: sha, // If null, this creates the file; if present, it updates the file
             }),
         });
 
         if (!response.ok) {
-            throw new Error('Could not save calendar data');
+            throw new Error(`Error saving data: ${response.statusText}`);
         }
 
         alert('Calendar saved successfully to GitHub!');
