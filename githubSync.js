@@ -1,4 +1,4 @@
-const githubToken = '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'; // Replace with your GitHub Personal Access Token
+const githubToken = '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'; // Replace with your GitHub Personal Access Token
 const githubRepo = 'Harry205737/Shift-Calendar'; // Replace with your GitHub repo name
 const filePath = 'calendarData.json'; // File to store calendar data
 const branch = 'main'; // Branch name
