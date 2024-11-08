@@ -1,161 +1,351 @@
-<script>
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    const currentMonth = today.getMonth();
-    const currentDay = today.getDate();
-    let selectedDate = null;
-    let addNoteMode = false;
-    let addShiftMode = false;
-
-    let shiftTypes = JSON.parse(localStorage.getItem('shiftTypes')) || { off: '#ffffff' };
-    populateShiftDropdown();
-
-    function populateShiftDropdown() {
-        const shiftDropdown = document.getElementById('shift');
-        shiftDropdown.innerHTML = '';
-
-        for (const [shiftName, color] of Object.entries(shiftTypes)) {
-            const option = document.createElement('option');
-            option.value = shiftName;
-            option.innerText = shiftName;
-            option.style.backgroundColor = color;
-            shiftDropdown.appendChild(option);
-        }
-    }
-
-    function addShiftType() {
-        const shiftName = document.getElementById('shift-name').value.trim();
-        const shiftColor = document.getElementById('shift-color').value;
-
-        if (shiftName === '' || shiftTypes[shiftName]) {
-            alert("Shift name cannot be empty or duplicate.");
-            return;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="/Shift-Calendar/manifest.json">
+    <!-- Enable full-screen mode on iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Shift Calendar">
+    <link rel="apple-touch-icon" href="/Shift-Calendar/icons/icon-192x192.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yearly Shift Calendar</title>
+    <style>
+        /* Styles remain the same as before */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
         }
 
-        shiftTypes[shiftName] = shiftColor;
-        localStorage.setItem('shiftTypes', JSON.stringify(shiftTypes));
+        h1 {
+            text-align: center;
+        }
+
+        /* Fixed menu styling */
+        .menu {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .menu button {
+            background-color: #555;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-top: 5px;
+            border-radius: 3px;
+        }
+
+        /* Menu content hidden by default */
+        .menu-content {
+            display: none;
+            flex-direction: column;
+            margin-top: 10px;
+        }
+
+        /* Toggle button to show/hide the menu */
+        .toggle-menu {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .calendar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+            margin-top: 60px;
+        }
+        .month {
+            border: 1px solid #333;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            width: 100%;
+        }
+        .month h2 {
+            margin: 0;
+            font-size: 18px;
+            text-align: center;
+            color: #333;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 10px;
+            text-align: center;
+            width: 14%;
+            cursor: pointer;
+            height: 80px; /* Increase height */
+            vertical-align: top;
+            position: relative;
+            box-sizing: border-box;
+        }
+        .current-day {
+            border: 2px solid green;
+            font-weight: bold;
+        }
+        .note-indicator {
+            color: purple;
+            font-size: 1.5em;
+            font-weight: bold;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+        }
+        .shift-time {
+            display: block;
+            font-size: 0.8em;
+            color: #333;
+            margin-top: 10px;
+        }
+
+        /* Floating button */
+        .floating-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: black;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1001;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Shift Calendar</h1>
+    <p>Harry Graafsma</p>
+
+    <!-- Fixed Menu -->
+    <div class="menu">
+        <button class="toggle-menu" onclick="toggleMenu()">☰ Menu</button>
+        <div class="menu-content">
+            <h3>Create Shift Type</h3>
+            <label for="shift-name">Shift Name:</label>
+            <input type="text" id="shift-name" placeholder="e.g., Day, Night">
+            <label for="shift-color">Color:</label>
+            <input type="color" id="shift-color">
+            <button onclick="addShiftType()">Add Shift Type</button>
+
+            <h3>Calendar Controls</h3>
+            <label for="shift">Select Shift: </label>
+            <select id="shift">
+                <option value="off">Off</option>
+            </select>
+
+            <button onclick="enterAddShiftMode()">Add Shift</button>
+            <button onclick="enterAddNoteMode()">Add Note</button>
+            <button onclick="showCalendar()">Show Calendar</button>
+            <button onclick="saveCalendar()">Save Calendar</button>
+        </div>
+    </div>
+
+    <div class="calendar" id="calendar"></div>
+
+    <!-- Note Dialog -->
+    <div id="note-dialog" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background-color:white; padding:20px; border:1px solid #333; border-radius:5px; z-index:2000;">
+        <h3>Add Note</h3>
+        <p id="note-dialog-date"></p>
+        <label for="note-text">Note:</label>
+        <textarea id="note-text" rows="3" style="width:100%;"></textarea>
+        <label for="shift-start">Shift Start Time:</label>
+        <input type="time" id="shift-start">
+        <label for="shift-end">Shift End Time:</label>
+        <input type="time" id="shift-end">
+        <button onclick="saveNote()">Save</button>
+        <button onclick="closeNoteDialog()">Cancel</button>
+    </div>
+
+    <!-- Floating Button -->
+    <button class="floating-btn" onclick="goToCurrentMonth()">🔙</button>
+
+    <script>
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        const currentDay = today.getDate();
+        let selectedDate = null;
+        let addNoteMode = false;
+        let addShiftMode = false;
+
+        let shiftTypes = JSON.parse(localStorage.getItem('shiftTypes')) || { off: '#ffffff' };
         populateShiftDropdown();
-        document.getElementById('shift-name').value = ''; 
-    }
 
-    function enterAddShiftMode() {
-        addShiftMode = true;
-        addNoteMode = false;
-        alert("Click on a day to add the selected shift.");
-    }
+        function populateShiftDropdown() {
+            const shiftDropdown = document.getElementById('shift');
+            shiftDropdown.innerHTML = '';
 
-    function enterAddNoteMode() {
-        addNoteMode = true;
-        addShiftMode = false;
-        alert("Click on a day to add a note.");
-    }
-
-    function generateCalendar(year) {
-        const calendarContainer = document.getElementById('calendar');
-        calendarContainer.innerHTML = '';
-
-        const monthNames = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December"
-        ];
-
-        for (let yearIndex = year; yearIndex <= 2030; yearIndex++) {
-            for (let month = 0; month < 12; month++) {
-                const date = new Date(yearIndex, month, 1);
-                const daysInMonth = new Date(yearIndex, month + 1, 0).getDate();
-                const startDay = date.getDay();
-
-                const monthDiv = document.createElement('div');
-                monthDiv.classList.add('month');
-                monthDiv.innerHTML = `<h2 id="month-${yearIndex}-${month}">${monthNames[month]} ${yearIndex}</h2>`;
-
-                const table = document.createElement('table');
-                const headerRow = document.createElement('tr');
-                const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                daysOfWeek.forEach(day => {
-                    const th = document.createElement('th');
-                    th.innerText = day;
-                    headerRow.appendChild(th);
-                });
-                table.appendChild(headerRow);
-
-                let row = document.createElement('tr');
-                for (let i = 0; i < startDay; i++) {
-                    row.appendChild(document.createElement('td'));
-                }
-
-                for (let day = 1; day <= daysInMonth; day++) {
-                    const td = document.createElement('td');
-                    td.innerText = day;
-
-                    if (yearIndex === currentYear && month === currentMonth && day === currentDay) {
-                        td.classList.add('current-day');
-                    }
-
-                    td.onclick = () => {
-                        if (addShiftMode) {
-                            td.style.backgroundColor = shiftTypes[document.getElementById('shift').value];
-                        } else if (addNoteMode) {
-                            showNoteDialog(yearIndex, month, day);
-                        }
-                    };
-
-                    row.appendChild(td);
-
-                    if ((startDay + day) % 7 === 0) {
-                        table.appendChild(row);
-                        row = document.createElement('tr');
-                    }
-                }
-
-                if (row.childNodes.length > 0) {
-                    table.appendChild(row);
-                }
-
-                monthDiv.appendChild(table);
-                calendarContainer.appendChild(monthDiv);
+            for (const [shiftName, color] of Object.entries(shiftTypes)) {
+                const option = document.createElement('option');
+                option.value = shiftName;
+                option.innerText = shiftName;
+                option.style.backgroundColor = color;
+                shiftDropdown.appendChild(option);
             }
         }
-    }
 
-    function showNoteDialog(year, month, day) {
-        selectedDate = { year, month, day };
-        document.getElementById('note-dialog-date').innerText = `${day}/${month + 1}/${year}`;
-        document.getElementById('note-text').value = '';
-        document.getElementById('shift-start').value = '';
-        document.getElementById('shift-end').value = '';
-        document.getElementById('note-dialog').style.display = 'block';
-    }
+        function addShiftType() {
+            const shiftName = document.getElementById('shift-name').value.trim();
+            const shiftColor = document.getElementById('shift-color').value;
 
-    function saveNote() {
-        const noteText = document.getElementById('note-text').value;
-        const shiftStart = document.getElementById('shift-start').value;
-        const shiftEnd = document.getElementById('shift-end').value;
+            if (shiftName === '' || shiftTypes[shiftName]) {
+                alert("Shift name cannot be empty or duplicate.");
+                return;
+            }
 
-        const noteKey = `${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`;
-        localStorage.setItem(noteKey, JSON.stringify({ noteText, shiftStart, shiftEnd }));
-
-        closeNoteDialog();
-    }
-
-    function closeNoteDialog() {
-        document.getElementById('note-dialog').style.display = 'none';
-    }
-
-    function goToCurrentMonth() {
-        const currentMonthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
-        if (currentMonthDiv) {
-            window.scrollTo({
-                top: currentMonthDiv.offsetTop - 50,
-                behavior: 'smooth'
-            });
+            shiftTypes[shiftName] = shiftColor;
+            localStorage.setItem('shiftTypes', JSON.stringify(shiftTypes));
+            populateShiftDropdown();
+            document.getElementById('shift-name').value = ''; 
         }
-    }
 
-    function toggleMenu() {
-        const menuContent = document.querySelector('.menu-content');
-        menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
-    }
+        function enterAddShiftMode() {
+            addShiftMode = true;
+            addNoteMode = false;
+            alert("Click on a day to add the selected shift.");
+        }
 
-    generateCalendar(currentYear);
-</script>
+        function enterAddNoteMode() {
+            addNoteMode = true;
+            addShiftMode = false;
+            alert("Click on a day to add a note.");
+        }
+
+        function generateCalendar(year) {
+            const calendarContainer = document.getElementById('calendar');
+            calendarContainer.innerHTML = '';
+
+            const monthNames = [
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            ];
+
+            for (let yearIndex = year; yearIndex <= 2030; yearIndex++) {
+                for (let month = 0; month < 12; month++) {
+                    const date = new Date(yearIndex, month, 1);
+                    const daysInMonth = new Date(yearIndex, month + 1, 0).getDate();
+                    const startDay = date.getDay();
+
+                    const monthDiv = document.createElement('div');
+                    monthDiv.classList.add('month');
+                    monthDiv.innerHTML = `<h2 id="month-${yearIndex}-${month}">${monthNames[month]} ${yearIndex}</h2>`;
+
+                    const table = document.createElement('table');
+                    const headerRow = document.createElement('tr');
+                    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    daysOfWeek.forEach(day => {
+                        const th = document.createElement('th');
+                        th.innerText = day;
+                        headerRow.appendChild(th);
+                    });
+                    table.appendChild(headerRow);
+
+                    let row = document.createElement('tr');
+                    for (let i = 0; i < startDay; i++) {
+                        row.appendChild(document.createElement('td'));
+                    }
+
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const td = document.createElement('td');
+                        td.innerText = day;
+
+                        if (yearIndex === currentYear && month === currentMonth && day === currentDay) {
+                            td.classList.add('current-day');
+                        }
+
+                        td.onclick = () => {
+                            if (addShiftMode) {
+                                td.style.backgroundColor = shiftTypes[document.getElementById('shift').value];
+                            } else if (addNoteMode) {
+                                showNoteDialog(yearIndex, month, day);
+                            }
+                        };
+
+                        row.appendChild(td);
+
+                        if ((startDay + day) % 7 === 0) {
+                            table.appendChild(row);
+                            row = document.createElement('tr');
+                        }
+                    }
+
+                    if (row.childNodes.length > 0) {
+                        table.appendChild(row);
+                    }
+
+                    monthDiv.appendChild(table);
+                    calendarContainer.appendChild(monthDiv);
+                }
+            }
+        }
+
+        function showNoteDialog(year, month, day) {
+            selectedDate = { year, month, day };
+            document.getElementById('note-dialog-date').innerText = `${day}/${month + 1}/${year}`;
+            document.getElementById('note-text').value = '';
+            document.getElementById('shift-start').value = '';
+            document.getElementById('shift-end').value = '';
+            document.getElementById('note-dialog').style.display = 'block';
+        }
+
+        function saveNote() {
+            const noteText = document.getElementById('note-text').value;
+            const shiftStart = document.getElementById('shift-start').value;
+            const shiftEnd = document.getElementById('shift-end').value;
+
+            const noteKey = `${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`;
+            localStorage.setItem(noteKey, JSON.stringify({ noteText, shiftStart, shiftEnd }));
+
+            closeNoteDialog();
+        }
+
+        function closeNoteDialog() {
+            document.getElementById('note-dialog').style.display = 'none';
+        }
+
+        function goToCurrentMonth() {
+            const currentMonthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
+            if (currentMonthDiv) {
+                window.scrollTo({
+                    top: currentMonthDiv.offsetTop - 50,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        function toggleMenu() {
+            const menuContent = document.querySelector('.menu-content');
+            menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        generateCalendar(currentYear);
+    </script>
+
+</body>
+</html>
