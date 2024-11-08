@@ -120,21 +120,6 @@
             color: #333;
             margin-top: 10px;
         }
-
-        /* Floating button */
-        .floating-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: black;
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 50%;
-            cursor: pointer;
-            font-size: 18px;
-            z-index: 1001;
-        }
     </style>
 </head>
 <body>
@@ -182,9 +167,6 @@
         <button onclick="closeNoteDialog()">Cancel</button>
     </div>
 
-    <!-- Floating Button -->
-    <button class="floating-btn" onclick="goToCurrentMonth()">🔙</button>
-
     <script>
         const today = new Date();
         const currentYear = today.getFullYear();
@@ -225,18 +207,6 @@
             document.getElementById('shift-name').value = ''; 
         }
 
-        function enterAddShiftMode() {
-            addShiftMode = true;
-            addNoteMode = false;
-            alert("Click on a day to add the selected shift.");
-        }
-
-        function enterAddNoteMode() {
-            addNoteMode = true;
-            addShiftMode = false;
-            alert("Click on a day to add a note.");
-        }
-
         function generateCalendar(year) {
             const calendarContainer = document.getElementById('calendar');
             calendarContainer.innerHTML = '';
@@ -254,16 +224,18 @@
 
                     const monthDiv = document.createElement('div');
                     monthDiv.classList.add('month');
-                    monthDiv.innerHTML = `<h2 id="month-${yearIndex}-${month}">${monthNames[month]} ${yearIndex}</h2>`;
+                    monthDiv.innerHTML = `<h2>${monthNames[month]} ${yearIndex}</h2>`;
 
                     const table = document.createElement('table');
                     const headerRow = document.createElement('tr');
                     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
                     daysOfWeek.forEach(day => {
                         const th = document.createElement('th');
                         th.innerText = day;
                         headerRow.appendChild(th);
                     });
+
                     table.appendChild(headerRow);
 
                     let row = document.createElement('tr');
@@ -281,8 +253,11 @@
 
                         td.onclick = () => {
                             if (addShiftMode) {
-                                td.style.backgroundColor = shiftTypes[document.getElementById('shift').value];
-                            } else if (addNoteMode) {
+                                td.style.backgroundColor = document.getElementById('shift').value;
+                                return;
+                            }
+
+                            if (addNoteMode) {
                                 showNoteDialog(yearIndex, month, day);
                             }
                         };
@@ -305,13 +280,18 @@
             }
         }
 
+        // Show the calendar with the current year and next years
+        generateCalendar(currentYear);
+
         function showNoteDialog(year, month, day) {
+            const noteDialog = document.getElementById('note-dialog');
+            document.getElementById('note-dialog-date').innerText = `${month + 1}/${day}/${year}`;
+            noteDialog.style.display = 'block';
             selectedDate = { year, month, day };
-            document.getElementById('note-dialog-date').innerText = `${day}/${month + 1}/${year}`;
-            document.getElementById('note-text').value = '';
-            document.getElementById('shift-start').value = '';
-            document.getElementById('shift-end').value = '';
-            document.getElementById('note-dialog').style.display = 'block';
+        }
+
+        function closeNoteDialog() {
+            document.getElementById('note-dialog').style.display = 'none';
         }
 
         function saveNote() {
@@ -319,32 +299,24 @@
             const shiftStart = document.getElementById('shift-start').value;
             const shiftEnd = document.getElementById('shift-end').value;
 
-            const noteKey = `${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`;
-            localStorage.setItem(noteKey, JSON.stringify({ noteText, shiftStart, shiftEnd }));
+            if (noteText.trim() === '') return;
+
+            // Add note to the selected date
+            const noteIndicator = document.createElement('span');
+            noteIndicator.classList.add('note-indicator');
+            noteIndicator.innerText = 'N';
+
+            const selectedDay = document.querySelector(`td[data-year="${selectedDate.year}"][data-month="${selectedDate.month}"][data-day="${selectedDate.day}"]`);
+            if (selectedDay) {
+                selectedDay.appendChild(noteIndicator);
+                const shiftTime = document.createElement('span');
+                shiftTime.classList.add('shift-time');
+                shiftTime.innerText = `Shift: ${shiftStart} - ${shiftEnd}`;
+                selectedDay.appendChild(shiftTime);
+            }
 
             closeNoteDialog();
         }
-
-        function closeNoteDialog() {
-            document.getElementById('note-dialog').style.display = 'none';
-        }
-
-        function goToCurrentMonth() {
-            const currentMonthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
-            if (currentMonthDiv) {
-                window.scrollTo({
-                    top: currentMonthDiv.offsetTop - 50,
-                    behavior: 'smooth'
-                });
-            }
-        }
-
-        function toggleMenu() {
-            const menuContent = document.querySelector('.menu-content');
-            menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
-        }
-
-        generateCalendar(currentYear);
     </script>
 
 </body>
