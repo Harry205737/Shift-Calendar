@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <link rel="manifest" href="/Shift-Calendar/manifest.json">
-    <!-- Enable full-screen mode on iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Shift Calendar">
@@ -97,7 +96,7 @@
             text-align: center;
             width: 14%;
             cursor: pointer;
-            height: 80px; /* Increase height */
+            height: 80px;
             vertical-align: top;
             position: relative;
             box-sizing: border-box;
@@ -272,32 +271,26 @@
                     }
 
                     for (let day = 1; day <= daysInMonth; day++) {
-                        const td = document.createElement('td');
-                        td.innerText = day;
-
-                        if (yearIndex === currentYear && month === currentMonth && day === currentDay) {
-                            td.classList.add('current-day');
-                        }
-
-                        td.onclick = () => {
-                            if (addShiftMode) {
-                                td.style.backgroundColor = shiftTypes[document.getElementById('shift').value];
-                            } else if (addNoteMode) {
-                                showNoteDialog(yearIndex, month, day);
-                            }
-                        };
-
-                        row.appendChild(td);
-
-                        if ((startDay + day) % 7 === 0) {
+                        if (row.children.length === 7) {
                             table.appendChild(row);
                             row = document.createElement('tr');
                         }
+
+                        const cell = document.createElement('td');
+                        cell.innerText = day;
+
+                        if (yearIndex === currentYear && month === currentMonth && day === currentDay) {
+                            cell.classList.add('current-day');
+                        }
+
+                        cell.addEventListener('click', () => handleDayClick(yearIndex, month, day, cell));
+                        row.appendChild(cell);
                     }
 
-                    if (row.childNodes.length > 0) {
-                        table.appendChild(row);
+                    while (row.children.length < 7) {
+                        row.appendChild(document.createElement('td'));
                     }
+                    table.appendChild(row);
 
                     monthDiv.appendChild(table);
                     calendarContainer.appendChild(monthDiv);
@@ -305,13 +298,25 @@
             }
         }
 
-        function showNoteDialog(year, month, day) {
-            selectedDate = { year, month, day };
-            document.getElementById('note-dialog-date').innerText = `${day}/${month + 1}/${year}`;
-            document.getElementById('note-text').value = '';
-            document.getElementById('shift-start').value = '';
-            document.getElementById('shift-end').value = '';
-            document.getElementById('note-dialog').style.display = 'block';
+        function handleDayClick(year, month, day, cell) {
+            selectedDate = `${year}-${month}-${day}`;
+
+            if (addShiftMode) {
+                const selectedShift = document.getElementById('shift').value;
+                const color = shiftTypes[selectedShift] || '#ffffff';
+                cell.style.backgroundColor = color;
+                addShiftMode = false;
+            } else if (addNoteMode) {
+                document.getElementById('note-dialog-date').innerText = `Add note for ${selectedDate}`;
+                document.getElementById('note-text').value = '';
+                document.getElementById('shift-start').value = '';
+                document.getElementById('shift-end').value = '';
+                document.getElementById('note-dialog').style.display = 'block';
+            }
+        }
+
+        function closeNoteDialog() {
+            document.getElementById('note-dialog').style.display = 'none';
         }
 
         function saveNote() {
@@ -319,33 +324,70 @@
             const shiftStart = document.getElementById('shift-start').value;
             const shiftEnd = document.getElementById('shift-end').value;
 
-            const noteKey = `${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`;
-            localStorage.setItem(noteKey, JSON.stringify({ noteText, shiftStart, shiftEnd }));
-
+            localStorage.setItem(selectedDate, JSON.stringify({ noteText, shiftStart, shiftEnd }));
             closeNoteDialog();
         }
 
-        function closeNoteDialog() {
-            document.getElementById('note-dialog').style.display = 'none';
-        }
-
-        function goToCurrentMonth() {
-            const currentMonthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
-            if (currentMonthDiv) {
-                window.scrollTo({
-                    top: currentMonthDiv.offsetTop - 50,
-                    behavior: 'smooth'
-                });
-            }
+        function showCalendar() {
+            generateCalendar(currentYear);
         }
 
         function toggleMenu() {
             const menuContent = document.querySelector('.menu-content');
-            menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
+            menuContent.style.display = menuContent.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        generateCalendar(currentYear);
-    </script>
+        function goToCurrentMonth() {
+            const monthDiv = document.getElementById(`month-${currentYear}-${currentMonth}`);
+            if (monthDiv) {
+                monthDiv.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
 
+        function saveCalendar() {
+            const calendarData = {};
+
+            document.querySelectorAll('.calendar .month table td').forEach((td) => {
+                const day = td.innerText;
+                const monthDiv = td.closest('.month');
+                if (day && monthDiv) {
+                    const [year, month] = monthDiv.querySelector('h2').id.split('-').slice(1).map(Number);
+                    const dayKey = `${year}-${month}-${day}`;
+                    const shiftColor = td.style.backgroundColor || null;
+                    const noteData = JSON.parse(localStorage.getItem(dayKey) || '{}');
+                    
+                    calendarData[dayKey] = {
+                        shiftColor,
+                        noteText: noteData.noteText || "",
+                        shiftStart: noteData.shiftStart || "",
+                        shiftEnd: noteData.shiftEnd || ""
+                    };
+                }
+            });
+
+            localStorage.setItem('calendarData', JSON.stringify(calendarData));
+            alert("Calendar saved successfully!");
+        }
+
+        function loadCalendar() {
+            const calendarData = JSON.parse(localStorage.getItem('calendarData') || '{}');
+
+            Object.entries(calendarData).forEach(([dayKey, { shiftColor, noteText, shiftStart, shiftEnd }]) => {
+                const [year, month, day] = dayKey.split('-').map(Number);
+                const monthDiv = document.getElementById(`month-${year}-${month}`);
+                if (monthDiv) {
+                    const td = Array.from(monthDiv.querySelectorAll('td')).find(td => td.innerText == day);
+                    if (td) {
+                        if (shiftColor) td.style.backgroundColor = shiftColor;
+                        if (noteText || shiftStart || shiftEnd) {
+                            localStorage.setItem(dayKey, JSON.stringify({ noteText, shiftStart, shiftEnd }));
+                        }
+                    }
+                }
+            });
+        }
+
+        window.onload = loadCalendar;
+    </script>
 </body>
 </html>
