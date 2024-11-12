@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <link rel="manifest" href="/Shift-Calendar/manifest.json">
-    <!-- Enable full-screen mode on iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Shift Calendar">
@@ -11,7 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yearly Shift Calendar</title>
     <style>
-        /* Styles remain the same as before */
+        /* Styles for body and layout */
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -49,14 +48,12 @@
             border-radius: 3px;
         }
 
-        /* Menu content hidden by default */
         .menu-content {
             display: none;
             flex-direction: column;
             margin-top: 10px;
         }
 
-        /* Toggle button to show/hide the menu */
         .toggle-menu {
             background-color: #444;
             color: white;
@@ -74,6 +71,7 @@
             max-width: 1000px;
             margin-top: 60px;
         }
+
         .month {
             border: 1px solid #333;
             padding: 10px;
@@ -81,31 +79,36 @@
             background-color: #f9f9f9;
             width: 100%;
         }
+
         .month h2 {
             margin: 0;
             font-size: 18px;
             text-align: center;
             color: #333;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
         }
+
         th, td {
             border: 1px solid #ccc;
             padding: 10px;
             text-align: center;
             width: 14%;
             cursor: pointer;
-            height: 80px; /* Increase height */
+            height: 80px;
             vertical-align: top;
             position: relative;
             box-sizing: border-box;
         }
+
         .current-day {
             border: 2px solid green;
             font-weight: bold;
         }
+
         .note-indicator {
             color: purple;
             font-size: 1.5em;
@@ -114,11 +117,25 @@
             top: 5px;
             right: 5px;
         }
+
         .shift-time {
             display: block;
             font-size: 0.8em;
             color: #333;
             margin-top: 10px;
+        }
+
+        .dialog {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #333;
+            border-radius: 5px;
+            z-index: 2000;
         }
     </style>
 </head>
@@ -154,11 +171,11 @@
     <div class="calendar" id="calendar"></div>
 
     <!-- Note Dialog -->
-    <div id="note-dialog" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background-color:white; padding:20px; border:1px solid #333; border-radius:5px; z-index:2000;">
+    <div id="note-dialog" class="dialog">
         <h3>Add Note</h3>
         <p id="note-dialog-date"></p>
         <label for="note-text">Note:</label>
-        <textarea id="note-text" rows="3" style="width:100%;"></textarea>
+        <textarea id="note-text" rows="3"></textarea>
         <label for="shift-start">Shift Start Time:</label>
         <input type="time" id="shift-start">
         <label for="shift-end">Shift End Time:</label>
@@ -178,6 +195,11 @@
 
         let shiftTypes = JSON.parse(localStorage.getItem('shiftTypes')) || { off: '#ffffff' };
         populateShiftDropdown();
+
+        function toggleMenu() {
+            const menuContent = document.querySelector('.menu-content');
+            menuContent.style.display = menuContent.style.display === 'none' ? 'flex' : 'none';
+        }
 
         function populateShiftDropdown() {
             const shiftDropdown = document.getElementById('shift');
@@ -252,26 +274,20 @@
                         }
 
                         td.onclick = () => {
+                            selectedDate = { year: yearIndex, month, day };
                             if (addShiftMode) {
-                                td.style.backgroundColor = document.getElementById('shift').value;
-                                return;
-                            }
-
-                            if (addNoteMode) {
-                                showNoteDialog(yearIndex, month, day);
+                                // addShift(selectedDate);
+                            } else if (addNoteMode) {
+                                // openNoteDialog(selectedDate);
                             }
                         };
 
                         row.appendChild(td);
 
-                        if ((startDay + day) % 7 === 0) {
+                        if ((day + startDay) % 7 === 0 || day === daysInMonth) {
                             table.appendChild(row);
                             row = document.createElement('tr');
                         }
-                    }
-
-                    if (row.childNodes.length > 0) {
-                        table.appendChild(row);
                     }
 
                     monthDiv.appendChild(table);
@@ -280,44 +296,13 @@
             }
         }
 
-        // Show the calendar with the current year and next years
         generateCalendar(currentYear);
 
-        function showNoteDialog(year, month, day) {
-            const noteDialog = document.getElementById('note-dialog');
-            document.getElementById('note-dialog-date').innerText = `${month + 1}/${day}/${year}`;
-            noteDialog.style.display = 'block';
-            selectedDate = { year, month, day };
-        }
-
-        function closeNoteDialog() {
-            document.getElementById('note-dialog').style.display = 'none';
-        }
-
-        function saveNote() {
-            const noteText = document.getElementById('note-text').value;
-            const shiftStart = document.getElementById('shift-start').value;
-            const shiftEnd = document.getElementById('shift-end').value;
-
-            if (noteText.trim() === '') return;
-
-            // Add note to the selected date
-            const noteIndicator = document.createElement('span');
-            noteIndicator.classList.add('note-indicator');
-            noteIndicator.innerText = 'N';
-
-            const selectedDay = document.querySelector(`td[data-year="${selectedDate.year}"][data-month="${selectedDate.month}"][data-day="${selectedDate.day}"]`);
-            if (selectedDay) {
-                selectedDay.appendChild(noteIndicator);
-                const shiftTime = document.createElement('span');
-                shiftTime.classList.add('shift-time');
-                shiftTime.innerText = `Shift: ${shiftStart} - ${shiftEnd}`;
-                selectedDay.appendChild(shiftTime);
-            }
-
-            closeNoteDialog();
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/Shift-Calendar/service-worker.js')
+            .then(() => console.log("Service Worker Registered"))
+            .catch(error => console.log("Service Worker Registration Failed:", error));
         }
     </script>
-
 </body>
 </html>
